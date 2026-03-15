@@ -1,0 +1,26 @@
+[project]
+name = "rlvr-tool-safety"
+version = "0.1.0"
+description = "RLVR for tool-call safety: ignore and reject policies via GRPO"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2.0",
+    "transformers>=4.45.0",
+    "trl>=0.15.0",
+    "peft>=0.13.0",
+    "accelerate>=1.0.0",
+    "bitsandbytes>=0.44.0",
+    "datasets>=2.19.0",
+    "huggingface-hub>=0.25.0",
+    "vllm>=0.6.0",
+    "wandb>=0.18.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+unsloth = ["unsloth"]
+dev = ["ipython", "jupyter"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

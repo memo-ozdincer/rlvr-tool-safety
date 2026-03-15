@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Venv
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data (large files — keep schemas, ignore traces)
+data/traces/*.jsonl
+!data/traces/.gitkeep
+
+# Outputs
+outputs/
+*.pt
+*.safetensors
+*.bin
+
+# Logs
+logs/
+*.log
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/

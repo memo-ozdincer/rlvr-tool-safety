@@ -1,0 +1,1401 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Auto-generated tool schema from AgentDojo traces \u2014 DO NOT EDIT manually",
+  "version": "agentdojo_v1",
+  "created": "2026-03-09",
+  "description": "Tool definitions extracted from AgentDojo augmented traces",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "add_calendar_event_participants",
+        "description": "Add calendar event participants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string",
+              "description": "Event id"
+            },
+            "participants": {
+              "type": "array",
+              "description": "Participants"
+            }
+          },
+          "required": [
+            "event_id",
+            "participants"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "add_user_to_channel",
+        "description": "Add user to channel",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "description": "Channel"
+            },
+            "user": {
+              "type": "string",
+              "description": "User"
+            }
+          },
+          "required": [
+            "channel",
+            "user"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "append_to_file",
+        "description": "Append to file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string",
+              "description": "Content"
+            },
+            "file_id": {
+              "type": "string",
+              "description": "File id"
+            }
+          },
+          "required": [
+            "content",
+            "file_id"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "check_restaurant_opening_hours",
+        "description": "Check restaurant opening hours",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "create_calendar_event",
+        "description": "Create calendar event",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description"
+            },
+            "end_time": {
+              "type": "string",
+              "description": "End time"
+            },
+            "location": {
+              "type": "string",
+              "description": "Location"
+            },
+            "participants": {
+              "type": "string",
+              "description": "Participants"
+            },
+            "start_time": {
+              "type": "string",
+              "description": "Start time"
+            },
+            "title": {
+              "type": "string",
+              "description": "Title"
+            }
+          },
+          "required": [
+            "description",
+            "end_time",
+            "location",
+            "participants",
+            "start_time",
+            "title"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "create_file",
+        "description": "Create file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string",
+              "description": "Content"
+            },
+            "filename": {
+              "type": "string",
+              "description": "Filename"
+            }
+          },
+          "required": [
+            "content",
+            "filename"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "delete_file",
+        "description": "Delete file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_id": {
+              "type": "string",
+              "description": "File id"
+            }
+          },
+          "required": [
+            "file_id"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_all_car_rental_companies_in_city",
+        "description": "Get all car rental companies in city",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_all_hotels_in_city",
+        "description": "Get all hotels in city",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_all_restaurants_in_city",
+        "description": "Get all restaurants in city",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_balance",
+        "description": "Get balance",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_car_fuel_options",
+        "description": "Get car fuel options",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "string",
+              "description": "Company name"
+            }
+          },
+          "required": [
+            "company_name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_car_price_per_day",
+        "description": "Get car price per day",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "string",
+              "description": "Company name"
+            }
+          },
+          "required": [
+            "company_name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_car_rental_address",
+        "description": "Get car rental address",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "array",
+              "description": "Company name"
+            }
+          },
+          "required": [
+            "company_name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_car_types_available",
+        "description": "Get car types available",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "string",
+              "description": "Company name"
+            }
+          },
+          "required": [
+            "company_name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_channels",
+        "description": "Get channels",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "description": "Channel"
+            },
+            "properties": {
+              "type": "object",
+              "description": "Properties"
+            }
+          },
+          "required": [
+            "channel",
+            "properties"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_contact_information_for_restaurants",
+        "description": "Get contact information for restaurants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_cuisine_type_for_restaurants",
+        "description": "Get cuisine type for restaurants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "string",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_current_day",
+        "description": "Get current day",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_day_calendar_events",
+        "description": "Get day calendar events",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "day": {
+              "type": "string",
+              "description": "Day"
+            }
+          },
+          "required": [
+            "day"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_dietary_restrictions_for_all_restaurants",
+        "description": "Get dietary restrictions for all restaurants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_file_by_id",
+        "description": "Get file by id",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_id": {
+              "type": "string",
+              "description": "File id"
+            }
+          },
+          "required": [
+            "file_id"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_flight_information",
+        "description": "Get flight information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "arrival_city": {
+              "type": "string",
+              "description": "Arrival city"
+            },
+            "departure_city": {
+              "type": "string",
+              "description": "Departure city"
+            }
+          },
+          "required": [
+            "arrival_city",
+            "departure_city"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_hotels_address",
+        "description": "Get hotels address",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "hotel_name": {
+              "type": "string",
+              "description": "Hotel name"
+            },
+            "hotel_names": {
+              "type": "array",
+              "description": "Hotel names"
+            }
+          },
+          "required": [
+            "hotel_name",
+            "hotel_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_hotels_prices",
+        "description": "Get hotels prices",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "hotel_names": {
+              "type": "array",
+              "description": "Hotel names"
+            }
+          },
+          "required": [
+            "hotel_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_iban",
+        "description": "Get iban",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_most_recent_transactions",
+        "description": "Get most recent transactions",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "n": {
+              "type": "integer",
+              "description": "N"
+            }
+          },
+          "required": [
+            "n"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_price_for_restaurants",
+        "description": "Get price for restaurants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_rating_reviews_for_car_rental",
+        "description": "Get rating reviews for car rental",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "string",
+              "description": "Company name"
+            }
+          },
+          "required": [
+            "company_name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_rating_reviews_for_hotels",
+        "description": "Get rating reviews for hotels",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "company_name": {
+              "type": "array",
+              "description": "Company name"
+            },
+            "hotel_names": {
+              "type": "array",
+              "description": "Hotel names"
+            },
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "company_name",
+            "hotel_names",
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_rating_reviews_for_restaurants",
+        "description": "Get rating reviews for restaurants",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_received_emails",
+        "description": "Get received emails",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_restaurants_address",
+        "description": "Get restaurants address",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "restaurant_names": {
+              "type": "array",
+              "description": "Restaurant names"
+            }
+          },
+          "required": [
+            "restaurant_names"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_scheduled_transactions",
+        "description": "Get scheduled transactions",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_unread_emails",
+        "description": "Get unread emails",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_user_info",
+        "description": "Get user info",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "n": {
+              "type": "integer",
+              "description": "N"
+            }
+          },
+          "required": [
+            "n"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_user_information",
+        "description": "Get user information",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_users_in_channel",
+        "description": "Get users in channel",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "description": "Channel"
+            }
+          },
+          "required": [
+            "channel"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_webpage",
+        "description": "Get webpage",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Url"
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "invite_user_to_slack",
+        "description": "Invite user to slack",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "string",
+              "description": "User"
+            },
+            "user_email": {
+              "type": "string",
+              "description": "User email"
+            }
+          },
+          "required": [
+            "user",
+            "user_email"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_files",
+        "description": "List files",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "post_webpage",
+        "description": "Post webpage",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string",
+              "description": "Content"
+            },
+            "url": {
+              "type": "string",
+              "description": "Url"
+            }
+          },
+          "required": [
+            "content",
+            "url"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_channel_messages",
+        "description": "Read channel messages",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "description": "Channel"
+            }
+          },
+          "required": [
+            "channel"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "File path"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_inbox",
+        "description": "Read inbox",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "string",
+              "description": "User"
+            }
+          },
+          "required": [
+            "user"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "reschedule_calendar_event",
+        "description": "Reschedule calendar event",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string",
+              "description": "Event id"
+            },
+            "new_end_time": {
+              "type": "string",
+              "description": "New end time"
+            },
+            "new_start_time": {
+              "type": "string",
+              "description": "New start time"
+            }
+          },
+          "required": [
+            "event_id",
+            "new_end_time",
+            "new_start_time"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "reserve_hotel",
+        "description": "Reserve hotel",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "end_day": {
+              "type": "string",
+              "description": "End day"
+            },
+            "hotel": {
+              "type": "string",
+              "description": "Hotel"
+            },
+            "start_day": {
+              "type": "string",
+              "description": "Start day"
+            }
+          },
+          "required": [
+            "end_day",
+            "hotel",
+            "start_day"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "reserve_restaurant",
+        "description": "Reserve restaurant",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "end_time": {
+              "type": "string",
+              "description": "End time"
+            },
+            "restaurant": {
+              "type": "string",
+              "description": "Restaurant"
+            },
+            "start_time": {
+              "type": "string",
+              "description": "Start time"
+            }
+          },
+          "required": [
+            "end_time",
+            "restaurant",
+            "start_time"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "schedule_transaction",
+        "description": "Schedule transaction",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "string",
+              "description": "Amount"
+            },
+            "date": {
+              "type": "string",
+              "description": "Date"
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Recipient"
+            },
+            "recurring": {
+              "type": "boolean",
+              "description": "Recurring"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Subject"
+            }
+          },
+          "required": [
+            "amount",
+            "date",
+            "recipient",
+            "recurring",
+            "subject"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_calendar_events",
+        "description": "Search calendar events",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Date"
+            },
+            "query": {
+              "type": "string",
+              "description": "Query"
+            }
+          },
+          "required": [
+            "date",
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_contacts_by_email",
+        "description": "Search contacts by email",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_contacts_by_name",
+        "description": "Search contacts by name",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_emails",
+        "description": "Search emails",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            },
+            "sender": {
+              "type": "string",
+              "description": "Sender"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Subject"
+            }
+          },
+          "required": [
+            "query",
+            "sender",
+            "subject"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_files",
+        "description": "Search files",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_files_by_filename",
+        "description": "Search files by filename",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Filename"
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_received_emails",
+        "description": "Search received emails",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_channel_message",
+        "description": "Send channel message",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string",
+              "description": "Body"
+            },
+            "channel": {
+              "type": "string",
+              "description": "Channel"
+            }
+          },
+          "required": [
+            "body",
+            "channel"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_direct_message",
+        "description": "Send direct message",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string",
+              "description": "Body"
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Recipient"
+            }
+          },
+          "required": [
+            "body",
+            "recipient"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_email",
+        "description": "Send email",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "attachments": {
+              "type": "array",
+              "description": "Attachments"
+            },
+            "body": {
+              "type": "string",
+              "description": "Body"
+            },
+            "cc": {
+              "type": "array",
+              "description": "Cc"
+            },
+            "recipients": {
+              "type": "string",
+              "description": "Recipients"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Subject"
+            }
+          },
+          "required": [
+            "attachments",
+            "body",
+            "cc",
+            "recipients",
+            "subject"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_money",
+        "description": "Send money",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "string",
+              "description": "Amount"
+            },
+            "date": {
+              "type": "string",
+              "description": "Date"
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Recipient"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Subject"
+            }
+          },
+          "required": [
+            "amount",
+            "date",
+            "recipient",
+            "subject"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "share_file",
+        "description": "Share file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "description": "Email"
+            },
+            "file_id": {
+              "type": "string",
+              "description": "File id"
+            },
+            "permission": {
+              "type": "string",
+              "description": "Permission"
+            }
+          },
+          "required": [
+            "email",
+            "file_id",
+            "permission"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "update_password",
+        "description": "Update password",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string",
+              "description": "Password"
+            }
+          },
+          "required": [
+            "password"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "update_scheduled_transaction",
+        "description": "Update scheduled transaction",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "description": "Amount"
+            },
+            "date": {
+              "type": "string",
+              "description": "Date"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Id"
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Recipient"
+            },
+            "recurring": {
+              "type": "boolean",
+              "description": "Recurring"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Subject"
+            }
+          },
+          "required": [
+            "amount",
+            "date",
+            "id",
+            "recipient",
+            "recurring",
+            "subject"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "update_user_info",
+        "description": "Update user info",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "City"
+            },
+            "first_name": {
+              "type": "string",
+              "description": "First name"
+            },
+            "last_name": {
+              "type": "string",
+              "description": "Last name"
+            },
+            "street": {
+              "type": "string",
+              "description": "Street"
+            }
+          },
+          "required": [
+            "city",
+            "first_name",
+            "last_name",
+            "street"
+          ]
+        }
+      }
+    }
+  ]
+}

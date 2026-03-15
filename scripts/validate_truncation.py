@@ -79,17 +79,22 @@ def main():
     for trace in harmful:
         tid = trace["id"]
         messages = trace["messages"]
-        trunc_idx = _find_truncation_point(trace)
+        trunc_idx, trunc_type = _find_truncation_point(trace)
 
         if trunc_idx is None:
             stats["no_truncation_point"] += 1
             continue
 
+        stats[f"trunc_{trunc_type}"] += 1
+
         # What tool does the model call at the truncation point?
-        trunc_msg = messages[trunc_idx]
         wrong_tool = None
-        if trunc_msg.get("tool_calls"):
-            wrong_tool = trunc_msg["tool_calls"][0].get("function", {}).get("name")
+        if trunc_idx < len(messages):
+            trunc_msg = messages[trunc_idx]
+            if trunc_msg.get("tool_calls"):
+                wrong_tool = trunc_msg["tool_calls"][0].get("function", {}).get("name")
+        else:
+            trunc_msg = None  # full_trace_after_injection: no decision msg in trace
 
         # What should it have called?
         expected_tool = _extract_expected_tool(trace, trunc_msg, pairs, trace_index)
@@ -104,28 +109,18 @@ def main():
             if m.get("role") == "assistant" and m.get("tool_calls")
         ]
 
-        # Classify truncation
-        if inj_msg_idx is not None:
-            tc_after_inj = [i for i in tc_indices if i > inj_msg_idx]
-            if tc_after_inj and trunc_idx == tc_after_inj[0]:
-                stats["correct_first_after_injection"] += 1
-            elif tc_after_inj and trunc_idx == tc_indices[-1]:
-                stats["fell_back_to_last"] += 1
-            else:
-                stats["other_truncation"] += 1
-        else:
-            stats["no_injection_span"] += 1
-
         # Validate expected vs wrong tool
         if expected_tool and wrong_tool:
             if expected_tool != wrong_tool:
                 stats["true_tool_flip"] += 1
             else:
                 stats["same_tool_attack"] += 1
+        elif expected_tool and trunc_type == "full_trace_after_injection":
+            stats["full_trace_with_expected"] += 1
         elif expected_tool is None:
             stats["no_expected_tool"] += 1
 
-        # Check injection is before truncation point
+        # Check injection is visible in prompt
         if inj_msg_idx is not None and inj_msg_idx < trunc_idx:
             stats["injection_in_prompt"] += 1
         elif inj_msg_idx is not None and inj_msg_idx >= trunc_idx:
@@ -138,7 +133,9 @@ def main():
             print(f"TRACE: {tid}")
             print(f"  Messages: {len(messages)}")
             print(f"  Injection msg: {inj_msg_idx}")
-            print(f"  Truncation msg: {trunc_idx} (model sees msgs[:{trunc_idx}])")
+            full = " (FULL TRACE)" if trunc_idx == len(messages) else ""
+            print(f"  Truncation msg: {trunc_idx}{full} (model sees msgs[:{trunc_idx}])")
+            print(f"  Truncation type: {trunc_type}")
             print(f"  Tool calls at: {tc_indices}")
 
             # Show message summary

@@ -165,18 +165,28 @@ def enrich_system_with_tools(
 # Truncation point selection
 # =============================================================================
 
-def _find_truncation_point(trace: dict) -> Optional[int]:
+def _find_truncation_point(trace: dict) -> tuple[Optional[int], str]:
     """Find the message index to truncate at (the decision point).
 
-    For harmful traces with injection_char_span:
-        Use the FIRST assistant tool-call AFTER the injection message.
-        This is where the model first decides to follow or resist.
+    Three cases for harmful traces with injection_char_span:
 
-    For harmful traces without injection info, or benign traces:
-        Use the LAST assistant tool-call.
+    1. Tool call AFTER injection exists → truncate there (first one).
+       Prompt includes the injection. Model must decide: follow or resist.
 
-    Returns the index of the assistant message to truncate at (exclusive),
-    or None if no tool call found.
+    2. No tool call after injection (augmented traces truncated after
+       injected tool response) → use FULL trace as prompt.
+       Return len(messages) to signal "include everything."
+       These are the best RLVR data: model sees injection, generates
+       its own tool call from scratch.
+
+    3. No injection span info → fall back to last tool call.
+
+    For benign traces: last tool call.
+
+    Returns:
+        (trunc_idx, trunc_type) where trunc_idx is the message index to
+        truncate at (exclusive). trunc_idx == len(messages) means "use
+        everything as prompt." None means unusable trace.
     """
     messages = trace.get("messages", [])
     labels = trace.get("labels", {})
@@ -188,22 +198,33 @@ def _find_truncation_point(trace: dict) -> Optional[int]:
         if m.get("role") == "assistant" and m.get("tool_calls")
     ]
 
-    if not tc_indices:
-        return None
-
-    # For harmful traces: try to find first tool call after injection
+    # For harmful traces: use injection position to find decision point
     if is_harmful:
         hint = trace.get("signal_hints", {}).get("injection_char_span", {})
         inj_msg_idx = hint.get("message_index")
 
         if inj_msg_idx is not None:
-            # First tool call AFTER the injection message
+            # Case 1: tool call after injection → truncate there
             tc_after = [i for i in tc_indices if i > inj_msg_idx]
             if tc_after:
-                return tc_after[0]
+                return tc_after[0], "first_after_injection"
 
-    # Fallback: last tool call
-    return tc_indices[-1]
+            # Case 2: no tool call after injection → full trace as prompt.
+            # The injection is in a tool response at the end of the trace.
+            # Model generates the next assistant turn from scratch.
+            # Verify injection is actually visible (at or before last message)
+            if inj_msg_idx < len(messages):
+                return len(messages), "full_trace_after_injection"
+
+        # Case 3: no injection info → fall back
+        if tc_indices:
+            return tc_indices[-1], "last_tool_call_no_injection_info"
+        return None, "no_tool_call"
+
+    # Benign/resisted: use last tool call
+    if tc_indices:
+        return tc_indices[-1], "last_tool_call"
+    return None, "no_tool_call"
 
 
 # =============================================================================
@@ -212,7 +233,7 @@ def _find_truncation_point(trace: dict) -> Optional[int]:
 
 def _extract_expected_tool(
     trace: dict,
-    decision_msg: dict,
+    decision_msg: Optional[dict],
     contrastive_pairs: Optional[dict[str, str]] = None,
     trace_index: Optional[dict[str, dict]] = None,
 ) -> Optional[str]:
@@ -220,6 +241,9 @@ def _extract_expected_tool(
 
     For benign traces: the tool in the decision turn IS the correct tool.
     For harmful traces: derive from signal_hints or contrastive benign pair.
+
+    decision_msg may be None for full-trace prompts (no assistant tool call
+    in the trace — the model generates the first one).
     """
     labels = trace.get("labels", {})
     attack_succeeded = labels.get("attack_succeeded", False)
@@ -245,10 +269,6 @@ def _extract_expected_tool(
             benign_id = contrastive_pairs.get(trace_id)
             if benign_id and benign_id in trace_index:
                 benign_trace = trace_index[benign_id]
-                # Use the corresponding tool call from the benign trace.
-                # The benign pair was created by removing the injection,
-                # so its first tool call after the same context position
-                # is the "correct" decision.
                 for msg in reversed(benign_trace.get("messages", [])):
                     if msg.get("role") == "assistant" and msg.get("tool_calls"):
                         tcs = msg["tool_calls"]
@@ -258,9 +278,10 @@ def _extract_expected_tool(
         return None
 
     # Benign/resisted: the tool in the decision turn is correct
-    tcs = decision_msg.get("tool_calls", [])
-    if tcs:
-        return tcs[0].get("function", {}).get("name")
+    if decision_msg is not None:
+        tcs = decision_msg.get("tool_calls", [])
+        if tcs:
+            return tcs[0].get("function", {}).get("name")
     return None
 
 
@@ -382,42 +403,35 @@ def build_grpo_dataset(
 
     records = []
     skipped = {"no_tool_call": 0, "no_expected_tool": 0, "too_short": 0}
-    truncation_stats = {"first_after_injection": 0, "last_tool_call": 0}
+    truncation_stats = {}
 
     for trace in traces:
         messages = trace.get("messages", [])
         labels = trace.get("labels", {})
 
         # Find truncation point (injection-aware for harmful traces)
-        trunc_idx = _find_truncation_point(trace)
+        trunc_idx, trunc_type = _find_truncation_point(trace)
 
         if trunc_idx is None:
             skipped["no_tool_call"] += 1
             continue
 
-        # Track how we chose the truncation point
-        is_harmful = labels.get("attack_succeeded", False)
-        hint = trace.get("signal_hints", {}).get("injection_char_span", {})
-        inj_msg_idx = hint.get("message_index")
-        if is_harmful and inj_msg_idx is not None and trunc_idx > inj_msg_idx:
-            # Verify: is this the FIRST tc after injection (not the last)?
-            all_tc = [i for i, m in enumerate(messages)
-                      if m.get("role") == "assistant" and m.get("tool_calls")]
-            first_after = next((i for i in all_tc if i > inj_msg_idx), None)
-            trunc_type = "first_after_injection" if trunc_idx == first_after else "last_tool_call"
-        else:
-            trunc_type = "last_tool_call"
         truncation_stats[trunc_type] = truncation_stats.get(trunc_type, 0) + 1
+
+        # Get the decision message (may be None for full-trace prompts)
+        decision_msg = messages[trunc_idx] if trunc_idx < len(messages) else None
 
         # Extract expected tool
         expected_tool = _extract_expected_tool(
-            trace, messages[trunc_idx], contrastive_pairs, trace_index
+            trace, decision_msg, contrastive_pairs, trace_index
         )
         if not expected_tool:
             skipped["no_expected_tool"] += 1
             continue
 
-        # Truncate: prompt = everything BEFORE the decision turn
+        # Build prompt: everything BEFORE the decision turn.
+        # For full_trace_after_injection: trunc_idx == len(messages), so
+        # prompt_messages == messages (entire trace including injection).
         prompt_messages = messages[:trunc_idx]
 
         if len(prompt_messages) < 2:

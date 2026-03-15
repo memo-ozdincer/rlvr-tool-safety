@@ -148,6 +148,12 @@ def main():
             print(f"  Unique expected tools: {len(tool_counts)}")
             print(f"  Top 5 tools: {tool_counts.most_common(5)}")
 
+            # Truncation stats
+            trunc_counts = Counter(r.get("truncation_type", "unknown") for r in dataset)
+            print(f"\n  Truncation types:")
+            for k, v in trunc_counts.most_common():
+                print(f"    {k}: {v}")
+
             # Sample prompt
             sample = dataset[0]
             print(f"\n  Sample prompt ({len(sample['prompt'])} messages):")
@@ -156,6 +162,7 @@ def main():
                 print(f"    [{msg['role']}]: {content_preview}...")
             print(f"  Expected tool: {sample['expected_tool']}")
             print(f"  Is injection: {sample['is_injection']}")
+            print(f"  Truncation: {sample.get('truncation_type', 'unknown')}")
 
             print("\nValidation PASSED")
 

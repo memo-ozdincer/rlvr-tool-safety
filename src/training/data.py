@@ -2,9 +2,19 @@
 Convert canonical traces to GRPO-compatible prompt datasets.
 
 Each trace becomes a prompt = conversation up to (but not including)
-the last assistant tool-call turn. The model must generate the tool call.
-Tool definitions are embedded in the system message so GRPOTrainer's
-chat template works without needing a `tools` parameter.
+the decision-point assistant turn. The model must generate the tool call.
+
+Truncation strategy:
+  - Harmful traces: truncate at the FIRST assistant tool-call AFTER injection.
+    This is the actual decision point where the model follows or resists.
+  - Benign traces: truncate at the LAST assistant tool-call.
+
+Tool formatting:
+  - Ported from rrfa ETL_B: assistant tool calls rendered as Llama 3.1
+    native format (<|python_tag|>{"name": ..., "parameters": ...})
+  - Tool responses kept as ipython role content
+  - System message enriched with tool definitions via apply_chat_template
+    (falls back to text embedding if tokenizer unavailable)
 """
 
 import json
@@ -16,6 +26,50 @@ from datasets import Dataset
 
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# Llama 3.1 tool call formatting (ported from rrfa ETL_B)
+# =============================================================================
+
+LLAMA_PYTHON_TAG = "<|python_tag|>"
+
+
+def _format_tool_call_llama(tool_name: str, arguments: dict) -> str:
+    """Format a tool call as Llama 3.1 JSON format.
+
+    Ported from rrfa src/schemas/tools/ETL_B.py:_format_tool_call_json
+    """
+    return f'{LLAMA_PYTHON_TAG}{{"name": "{tool_name}", "parameters": {json.dumps(arguments, ensure_ascii=False)}}}'
+
+
+def _format_assistant_with_tool_calls(msg: dict) -> str:
+    """Format an assistant message with tool calls in Llama 3.1 style.
+
+    Content + tool calls rendered as:
+        <content>
+
+        <|python_tag|>{"name": "tool", "parameters": {...}}
+    """
+    content = msg.get("content", "") or ""
+    parts = [content] if content.strip() else []
+
+    for tc in msg.get("tool_calls") or []:
+        fn = tc.get("function", {})
+        name = fn.get("name", "")
+        args = fn.get("arguments", {})
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                args = {}
+        parts.append(_format_tool_call_llama(name, args))
+
+    return "\n\n".join(parts) if parts else content
+
+
+# =============================================================================
+# Data loading
+# =============================================================================
 
 def load_traces(path: Path, max_samples: Optional[int] = None) -> list[dict]:
     """Load traces from JSONL file."""
@@ -38,7 +92,11 @@ def load_tool_schema(path: Path) -> list[dict]:
 
 
 def _format_tools_for_system(tools: list[dict]) -> str:
-    """Format tool definitions as text for embedding in system message."""
+    """Format tool definitions as text for embedding in system message.
+
+    Used as fallback when tokenizer is not available. When a tokenizer IS
+    available, use enrich_system_with_tools() instead for native rendering.
+    """
     formatted = []
     for tool in tools:
         fn = tool.get("function", tool)
@@ -59,24 +117,115 @@ def _format_tools_for_system(tools: list[dict]) -> str:
     return "Available tools:\n" + "\n".join(formatted)
 
 
+def enrich_system_with_tools(
+    system_content: str,
+    tools: list[dict],
+    tokenizer=None,
+) -> str:
+    """Enrich system message with tool definitions using Llama's native format.
+
+    Ported from rrfa ETL_B:_enrich_trace_system_with_tools.
+    Uses tokenizer.apply_chat_template(tools=tools) to get the correct
+    "Environment: ipython" format that triggers <|python_tag|> generation.
+
+    Falls back to text embedding if tokenizer is unavailable.
+    """
+    if tokenizer is None:
+        return f"{system_content}\n\n{_format_tools_for_system(tools)}"
+
+    try:
+        rendered = tokenizer.apply_chat_template(
+            [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": "Hello"},
+            ],
+            tools=tools,
+            tokenize=False,
+            add_generation_prompt=False,
+        )
+    except (TypeError, Exception):
+        return f"{system_content}\n\n{_format_tools_for_system(tools)}"
+
+    # Extract enriched system content from rendered text.
+    # Llama format: <bos><|start_header_id|>system<|end_header_id|>\n\n{sys_content}<|eot_id|>...
+    header_marker = "<|end_header_id|>\n\n"
+    header_pos = rendered.find(header_marker)
+    if header_pos < 0:
+        return f"{system_content}\n\n{_format_tools_for_system(tools)}"
+
+    content_start = header_pos + len(header_marker)
+    eot_pos = rendered.find("<|eot_id|>", content_start)
+    if eot_pos <= content_start:
+        return f"{system_content}\n\n{_format_tools_for_system(tools)}"
+
+    return rendered[content_start:eot_pos]
+
+
+# =============================================================================
+# Truncation point selection
+# =============================================================================
+
+def _find_truncation_point(trace: dict) -> Optional[int]:
+    """Find the message index to truncate at (the decision point).
+
+    For harmful traces with injection_char_span:
+        Use the FIRST assistant tool-call AFTER the injection message.
+        This is where the model first decides to follow or resist.
+
+    For harmful traces without injection info, or benign traces:
+        Use the LAST assistant tool-call.
+
+    Returns the index of the assistant message to truncate at (exclusive),
+    or None if no tool call found.
+    """
+    messages = trace.get("messages", [])
+    labels = trace.get("labels", {})
+    is_harmful = labels.get("attack_succeeded", False)
+
+    # Find all assistant tool-call indices
+    tc_indices = [
+        i for i, m in enumerate(messages)
+        if m.get("role") == "assistant" and m.get("tool_calls")
+    ]
+
+    if not tc_indices:
+        return None
+
+    # For harmful traces: try to find first tool call after injection
+    if is_harmful:
+        hint = trace.get("signal_hints", {}).get("injection_char_span", {})
+        inj_msg_idx = hint.get("message_index")
+
+        if inj_msg_idx is not None:
+            # First tool call AFTER the injection message
+            tc_after = [i for i in tc_indices if i > inj_msg_idx]
+            if tc_after:
+                return tc_after[0]
+
+    # Fallback: last tool call
+    return tc_indices[-1]
+
+
+# =============================================================================
+# Expected tool extraction
+# =============================================================================
+
 def _extract_expected_tool(
     trace: dict,
-    last_tc_msg: dict,
+    decision_msg: dict,
     contrastive_pairs: Optional[dict[str, str]] = None,
     trace_index: Optional[dict[str, dict]] = None,
 ) -> Optional[str]:
     """Extract the expected (correct) tool from a trace.
 
-    For benign traces: the tool in the last assistant turn IS the correct tool.
-    For harmful traces: we need the expected_tool from labels/signal_hints,
-    or derive it from the contrastive benign pair.
+    For benign traces: the tool in the decision turn IS the correct tool.
+    For harmful traces: derive from signal_hints or contrastive benign pair.
     """
     labels = trace.get("labels", {})
     attack_succeeded = labels.get("attack_succeeded", False)
 
-    # If attack succeeded, the tool in the trace is WRONG — get the expected one
     if attack_succeeded:
-        # Check various locations for expected_tool
+        # Check signal_hints (Fujitsu traces have this)
         for field_path in [
             ("labels", "expected_tool"),
             ("tool_attack", "expected_tool"),
@@ -90,13 +239,16 @@ def _extract_expected_tool(
             if isinstance(obj, str) and obj:
                 return obj
 
-        # Fallback: derive from contrastive benign pair (AgentDojo traces)
+        # Derive from contrastive benign pair (AgentDojo traces)
         if contrastive_pairs and trace_index:
             trace_id = trace.get("id", "")
             benign_id = contrastive_pairs.get(trace_id)
             if benign_id and benign_id in trace_index:
                 benign_trace = trace_index[benign_id]
-                # Find last tool call in benign trace
+                # Use the corresponding tool call from the benign trace.
+                # The benign pair was created by removing the injection,
+                # so its first tool call after the same context position
+                # is the "correct" decision.
                 for msg in reversed(benign_trace.get("messages", [])):
                     if msg.get("role") == "assistant" and msg.get("tool_calls"):
                         tcs = msg["tool_calls"]
@@ -105,22 +257,27 @@ def _extract_expected_tool(
 
         return None
 
-    # Benign/resisted: the tool in the trace is correct
-    tcs = last_tc_msg.get("tool_calls", [])
+    # Benign/resisted: the tool in the decision turn is correct
+    tcs = decision_msg.get("tool_calls", [])
     if tcs:
-        fn = tcs[0].get("function", {})
-        return fn.get("name")
+        return tcs[0].get("function", {}).get("name")
     return None
 
 
-def _convert_messages_for_chat(
-    messages: list[dict], tools_text: str
-) -> list[dict[str, str]]:
-    """Convert trace messages to chat format suitable for apply_chat_template.
+# =============================================================================
+# Message conversion for GRPO prompts
+# =============================================================================
 
-    - Embeds tool definitions in the system message
-    - Converts 'tool' role to 'user' role (GRPOTrainer doesn't handle tool role)
-    - Formats assistant tool_calls as text in content
+def _convert_messages_for_chat(
+    messages: list[dict],
+    tools: list[dict],
+    tokenizer=None,
+) -> list[dict[str, str]]:
+    """Convert trace messages to chat format for GRPOTrainer.
+
+    - System message enriched with tool defs (native Llama format if tokenizer available)
+    - Tool responses kept as 'ipython' role (Llama 3.1 native) or 'user' fallback
+    - Assistant tool calls formatted as <|python_tag|> JSON
     """
     converted = []
     system_seen = False
@@ -130,12 +287,13 @@ def _convert_messages_for_chat(
         content = msg.get("content", "") or ""
 
         if role == "system":
-            content = f"{content}\n\n{tools_text}"
+            content = enrich_system_with_tools(content, tools, tokenizer)
             converted.append({"role": "system", "content": content})
             system_seen = True
 
         elif role == "tool":
-            # Convert tool response to user message
+            # Llama 3.1 uses "ipython" role for tool responses.
+            # GRPOTrainer may not support it → fall back to "user"
             name = msg.get("name", "tool")
             converted.append({
                 "role": "user",
@@ -143,29 +301,26 @@ def _convert_messages_for_chat(
             })
 
         elif role == "assistant":
-            parts = [content] if content.strip() else []
-            for tc in msg.get("tool_calls") or []:
-                fn = tc.get("function", {})
-                name = fn.get("name", "")
-                args = fn.get("arguments", {})
-                if isinstance(args, str):
-                    parts.append(f"{name}({args})")
-                else:
-                    parts.append(f"{name}({json.dumps(args)})")
-            converted.append({"role": "assistant", "content": "\n".join(parts)})
+            # Format tool calls in Llama 3.1 native style
+            if msg.get("tool_calls"):
+                formatted = _format_assistant_with_tool_calls(msg)
+                converted.append({"role": "assistant", "content": formatted})
+            else:
+                converted.append({"role": "assistant", "content": content})
 
         elif role == "user":
             converted.append({"role": "user", "content": content})
 
-    # Ensure system message exists
     if not system_seen:
-        converted.insert(0, {
-            "role": "system",
-            "content": f"You are a helpful assistant.\n\n{tools_text}",
-        })
+        enriched = enrich_system_with_tools("You are a helpful assistant.", tools, tokenizer)
+        converted.insert(0, {"role": "system", "content": enriched})
 
     return converted
 
+
+# =============================================================================
+# Contrastive pairs
+# =============================================================================
 
 def _load_contrastive_pairs(path: Path) -> dict[str, str]:
     """Load contrastive pairs as {harmful_trace_id: benign_trace_id}."""
@@ -180,22 +335,29 @@ def _load_contrastive_pairs(path: Path) -> dict[str, str]:
     return pairs
 
 
+# =============================================================================
+# Dataset builder
+# =============================================================================
+
 def build_grpo_dataset(
     traces_path: Path,
     tool_schema_path: Path,
     mode: str = "ignore",
     max_samples: Optional[int] = None,
     contrastive_pairs_path: Optional[Path] = None,
+    tokenizer=None,
 ) -> Dataset:
     """Build a GRPO-compatible dataset from canonical traces.
 
     Args:
         traces_path: Path to JSONL traces file.
         tool_schema_path: Path to tool schema JSON.
-        mode: "ignore" or "reject" — determines which traces to include.
+        mode: "ignore" or "reject" (both use same data, reward differs).
         max_samples: Limit number of samples.
         contrastive_pairs_path: Path to contrastive_pairs.jsonl for deriving
             expected_tool from benign pairs (needed for AgentDojo traces).
+        tokenizer: Optional HuggingFace tokenizer for native tool rendering.
+            If None, tools are embedded as text in the system message.
 
     Returns:
         HuggingFace Dataset with columns:
@@ -204,72 +366,79 @@ def build_grpo_dataset(
         - is_injection: bool — whether prompt contains injection
         - trace_id: str — source trace ID
         - category: str — harmful/benign/resisted
+        - truncation_type: str — how the truncation point was chosen
     """
     traces = load_traces(traces_path, max_samples)
     tools = load_tool_schema(tool_schema_path)
-    tools_text = _format_tools_for_system(tools)
 
-    # Load contrastive pairs if provided (for AgentDojo expected_tool derivation)
+    # Load contrastive pairs if provided
     contrastive_pairs = None
     trace_index = None
     if contrastive_pairs_path:
         contrastive_pairs = _load_contrastive_pairs(contrastive_pairs_path)
-        # Build trace index for benign pair lookup
         trace_index = {t.get("id", ""): t for t in traces}
 
     logger.info("Loaded %d traces from %s", len(traces), traces_path)
 
     records = []
     skipped = {"no_tool_call": 0, "no_expected_tool": 0, "too_short": 0}
+    truncation_stats = {"first_after_injection": 0, "last_tool_call": 0}
 
     for trace in traces:
         messages = trace.get("messages", [])
         labels = trace.get("labels", {})
 
-        # Find last assistant message with tool_calls
-        last_tc_idx = None
-        for i in range(len(messages) - 1, -1, -1):
-            msg = messages[i]
-            if msg.get("role") == "assistant" and msg.get("tool_calls"):
-                last_tc_idx = i
-                break
+        # Find truncation point (injection-aware for harmful traces)
+        trunc_idx = _find_truncation_point(trace)
 
-        if last_tc_idx is None:
+        if trunc_idx is None:
             skipped["no_tool_call"] += 1
             continue
 
+        # Track how we chose the truncation point
+        is_harmful = labels.get("attack_succeeded", False)
+        hint = trace.get("signal_hints", {}).get("injection_char_span", {})
+        inj_msg_idx = hint.get("message_index")
+        if is_harmful and inj_msg_idx is not None and trunc_idx > inj_msg_idx:
+            # Verify: is this the FIRST tc after injection (not the last)?
+            all_tc = [i for i, m in enumerate(messages)
+                      if m.get("role") == "assistant" and m.get("tool_calls")]
+            first_after = next((i for i in all_tc if i > inj_msg_idx), None)
+            trunc_type = "first_after_injection" if trunc_idx == first_after else "last_tool_call"
+        else:
+            trunc_type = "last_tool_call"
+        truncation_stats[trunc_type] = truncation_stats.get(trunc_type, 0) + 1
+
         # Extract expected tool
         expected_tool = _extract_expected_tool(
-            trace, messages[last_tc_idx], contrastive_pairs, trace_index
+            trace, messages[trunc_idx], contrastive_pairs, trace_index
         )
         if not expected_tool:
             skipped["no_expected_tool"] += 1
             continue
 
-        # Truncate to before this turn
-        prompt_messages = messages[:last_tc_idx]
+        # Truncate: prompt = everything BEFORE the decision turn
+        prompt_messages = messages[:trunc_idx]
 
-        # Need at least system + user
         if len(prompt_messages) < 2:
             skipped["too_short"] += 1
             continue
 
-        # Convert to chat format
-        chat_messages = _convert_messages_for_chat(prompt_messages, tools_text)
-
-        is_injection = labels.get("attack_present", False)
-        category = labels.get("category", "unknown")
+        # Convert to chat format with proper tool rendering
+        chat_messages = _convert_messages_for_chat(prompt_messages, tools, tokenizer)
 
         records.append({
             "prompt": chat_messages,
             "expected_tool": expected_tool,
-            "is_injection": is_injection,
+            "is_injection": labels.get("attack_present", False),
             "trace_id": trace.get("id", ""),
-            "category": category,
+            "category": labels.get("category", "unknown"),
+            "truncation_type": trunc_type,
         })
 
     logger.info(
-        "Built %d prompts (skipped: %s)", len(records), skipped
+        "Built %d prompts (skipped: %s, truncation: %s)",
+        len(records), skipped, truncation_stats,
     )
 
     if not records:

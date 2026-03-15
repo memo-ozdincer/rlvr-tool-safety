@@ -170,6 +170,7 @@ def main():
         tool_schema_path=args.tool_schema,
         max_samples=args.max_samples,
         contrastive_pairs_path=args.contrastive_pairs,
+        tokenizer=tokenizer,
     )
     logger.info("Dataset: %d prompts", len(dataset))
 

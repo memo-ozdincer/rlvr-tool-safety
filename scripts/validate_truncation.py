@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.training.data import (
     _find_truncation_point,
     _extract_expected_tool,
-    _load_contrastive_pairs,
+    _build_task_index,
     load_traces,
 )
 
@@ -54,17 +54,15 @@ def extract_injection_text(trace: dict) -> str | None:
 def main():
     parser = argparse.ArgumentParser(description="Validate truncation points")
     parser.add_argument("--traces", type=Path, required=True)
-    parser.add_argument("--contrastive-pairs", type=Path, required=True)
     parser.add_argument("--tool-schema", type=Path, default=None)
     parser.add_argument("--show-examples", type=int, default=5)
     parser.add_argument("--max-traces", type=int, default=None)
     args = parser.parse_args()
 
     traces = load_traces(args.traces, args.max_traces)
-    pairs = _load_contrastive_pairs(args.contrastive_pairs)
-    trace_index = {t.get("id", ""): t for t in traces}
+    task_index = _build_task_index(traces)
 
-    print(f"Loaded {len(traces)} traces, {len(pairs)} contrastive pairs\n")
+    print(f"Loaded {len(traces)} traces, {len(task_index)} original benign tasks\n")
 
     # =========================================================================
     # Validate harmful traces
@@ -97,7 +95,7 @@ def main():
             trunc_msg = None  # full_trace_after_injection: no decision msg in trace
 
         # What should it have called?
-        expected_tool = _extract_expected_tool(trace, trunc_msg, pairs, trace_index)
+        expected_tool = _extract_expected_tool(trace, trunc_msg, task_index)
 
         # Injection location
         hint = trace.get("signal_hints", {}).get("injection_char_span", {})

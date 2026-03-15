@@ -130,7 +130,6 @@ def main():
                 traces_path=args.traces,
                 tool_schema_path=args.tool_schema,
                 max_samples=args.max_samples,
-                contrastive_pairs_path=args.contrastive_pairs,
             )
             print(f"\nDataset built: {len(dataset)} prompts")
 

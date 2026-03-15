@@ -31,6 +31,8 @@ def main():
     parser.add_argument("--validate", action="store_true",
                         help="Build GRPO dataset and validate")
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--contrastive-pairs", type=Path, default=None,
+                        help="Path to contrastive_pairs.jsonl for AgentDojo expected_tool derivation")
     args = parser.parse_args()
 
     # Load and analyze traces
@@ -109,7 +111,11 @@ def main():
 
     if harmful_no_expected:
         print(f"\nWARNING: {harmful_no_expected} harmful (attack_succeeded) traces "
-              f"missing expected_tool — these will be skipped in GRPO training")
+              f"missing expected_tool metadata in trace fields")
+        if args.contrastive_pairs:
+            print(f"  → Will derive expected_tool from contrastive pairs")
+        else:
+            print(f"  → These will be skipped unless --contrastive-pairs is provided")
 
     # Validate GRPO dataset build
     if args.validate and args.tool_schema:
@@ -124,6 +130,7 @@ def main():
                 traces_path=args.traces,
                 tool_schema_path=args.tool_schema,
                 max_samples=args.max_samples,
+                contrastive_pairs_path=args.contrastive_pairs,
             )
             print(f"\nDataset built: {len(dataset)} prompts")
 

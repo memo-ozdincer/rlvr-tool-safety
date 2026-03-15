@@ -59,11 +59,17 @@ def _format_tools_for_system(tools: list[dict]) -> str:
     return "Available tools:\n" + "\n".join(formatted)
 
 
-def _extract_expected_tool(trace: dict, last_tc_msg: dict) -> Optional[str]:
+def _extract_expected_tool(
+    trace: dict,
+    last_tc_msg: dict,
+    contrastive_pairs: Optional[dict[str, str]] = None,
+    trace_index: Optional[dict[str, dict]] = None,
+) -> Optional[str]:
     """Extract the expected (correct) tool from a trace.
 
     For benign traces: the tool in the last assistant turn IS the correct tool.
-    For harmful traces: we need the expected_tool from labels/signal_hints.
+    For harmful traces: we need the expected_tool from labels/signal_hints,
+    or derive it from the contrastive benign pair.
     """
     labels = trace.get("labels", {})
     attack_succeeded = labels.get("attack_succeeded", False)
@@ -83,7 +89,20 @@ def _extract_expected_tool(trace: dict, last_tc_msg: dict) -> Optional[str]:
                     break
             if isinstance(obj, str) and obj:
                 return obj
-        # Fallback: can't determine expected tool for this harmful trace
+
+        # Fallback: derive from contrastive benign pair (AgentDojo traces)
+        if contrastive_pairs and trace_index:
+            trace_id = trace.get("id", "")
+            benign_id = contrastive_pairs.get(trace_id)
+            if benign_id and benign_id in trace_index:
+                benign_trace = trace_index[benign_id]
+                # Find last tool call in benign trace
+                for msg in reversed(benign_trace.get("messages", [])):
+                    if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                        tcs = msg["tool_calls"]
+                        if tcs:
+                            return tcs[0].get("function", {}).get("name")
+
         return None
 
     # Benign/resisted: the tool in the trace is correct
@@ -148,11 +167,25 @@ def _convert_messages_for_chat(
     return converted
 
 
+def _load_contrastive_pairs(path: Path) -> dict[str, str]:
+    """Load contrastive pairs as {harmful_trace_id: benign_trace_id}."""
+    pairs = {}
+    with open(path) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            pair = json.loads(line)
+            pairs[pair["harmful_trace_id"]] = pair["benign_trace_id"]
+    logger.info("Loaded %d contrastive pairs from %s", len(pairs), path)
+    return pairs
+
+
 def build_grpo_dataset(
     traces_path: Path,
     tool_schema_path: Path,
     mode: str = "ignore",
     max_samples: Optional[int] = None,
+    contrastive_pairs_path: Optional[Path] = None,
 ) -> Dataset:
     """Build a GRPO-compatible dataset from canonical traces.
 
@@ -161,6 +194,8 @@ def build_grpo_dataset(
         tool_schema_path: Path to tool schema JSON.
         mode: "ignore" or "reject" — determines which traces to include.
         max_samples: Limit number of samples.
+        contrastive_pairs_path: Path to contrastive_pairs.jsonl for deriving
+            expected_tool from benign pairs (needed for AgentDojo traces).
 
     Returns:
         HuggingFace Dataset with columns:
@@ -173,6 +208,14 @@ def build_grpo_dataset(
     traces = load_traces(traces_path, max_samples)
     tools = load_tool_schema(tool_schema_path)
     tools_text = _format_tools_for_system(tools)
+
+    # Load contrastive pairs if provided (for AgentDojo expected_tool derivation)
+    contrastive_pairs = None
+    trace_index = None
+    if contrastive_pairs_path:
+        contrastive_pairs = _load_contrastive_pairs(contrastive_pairs_path)
+        # Build trace index for benign pair lookup
+        trace_index = {t.get("id", ""): t for t in traces}
 
     logger.info("Loaded %d traces from %s", len(traces), traces_path)
 
@@ -196,7 +239,9 @@ def build_grpo_dataset(
             continue
 
         # Extract expected tool
-        expected_tool = _extract_expected_tool(trace, messages[last_tc_idx])
+        expected_tool = _extract_expected_tool(
+            trace, messages[last_tc_idx], contrastive_pairs, trace_index
+        )
         if not expected_tool:
             skipped["no_expected_tool"] += 1
             continue

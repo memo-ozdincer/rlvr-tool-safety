@@ -44,6 +44,8 @@ def parse_args():
                     help="Path to tool schema JSON")
     p.add_argument("--max-samples", type=int, default=None,
                     help="Limit number of training samples")
+    p.add_argument("--contrastive-pairs", type=Path, default=None,
+                    help="Path to contrastive_pairs.jsonl for AgentDojo expected_tool derivation")
 
     # Policy
     p.add_argument("--policy", choices=["ignore", "reject"], required=True,
@@ -167,6 +169,7 @@ def main():
         traces_path=args.traces,
         tool_schema_path=args.tool_schema,
         max_samples=args.max_samples,
+        contrastive_pairs_path=args.contrastive_pairs,
     )
     logger.info("Dataset: %d prompts", len(dataset))
 
